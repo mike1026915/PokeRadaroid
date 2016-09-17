@@ -4,6 +4,8 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentActivity;
@@ -17,7 +19,11 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.VisibleRegion;
+
+import java.util.ArrayList;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
@@ -27,6 +33,32 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int REQUEST_LOCATION_PERMISSION = 100;
     private double current_latitude = 25.048187;
     private double current_longtitude = 121.517172;
+    static double minLatitude = 0.0;
+    static double maxLatitude = 0.0;
+    static double minLongtitude = 0.0;
+    static double maxLongtitude = 0.0;
+    private ArrayList<Marker> markerList = new ArrayList<Marker>();
+
+    public Handler UiHandler = new Handler()
+    {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            Log.d(DEBUG, "handleMessage");
+            ArrayList<PokeMon> data = (ArrayList<PokeMon>)msg.getData().getSerializable(QueryDataThread.QUERY_RESULT);
+            for(Marker m: markerList)
+            {
+                m.remove();
+            }
+            for(PokeMon p: data)
+            {
+                Marker tmp = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(p.latitude, p.longtitude))
+                .title("PokeMon ID" + p.id));
+                markerList.add(tmp);
+            }
+        }
+    };
 
     static String DEBUG="__DEBUG__";
 
@@ -91,16 +123,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        /*
-        if(!googleApiClient.isConnected())
-        {
-            googleApiClient.connect();
-        }*/
     }
 
     /**
@@ -116,8 +144,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         Log.d(DEBUG, "onMapReady");
-        // Add a marker in Sydney and move the camera
-        //setLocation();
+
+        mMap.setOnCameraIdleListener(
+        new GoogleMap.OnCameraIdleListener()
+        {
+            @Override
+            public void onCameraIdle()
+            {
+                VisibleRegion mapVisibleRegion  = mMap.getProjection().getVisibleRegion();
+                MapsActivity.minLatitude = mapVisibleRegion.latLngBounds.southwest.latitude;
+                MapsActivity.maxLatitude = mapVisibleRegion.latLngBounds.northeast.latitude;
+                MapsActivity.minLongtitude = mapVisibleRegion.latLngBounds.southwest.longitude;
+                MapsActivity.maxLongtitude = mapVisibleRegion.latLngBounds.northeast.longitude;
+                new QueryDataThread(MapsActivity.this).start();
+
+            }
+        }
+        );
     }
 
     private void setLocation()
@@ -134,6 +177,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Log.d(DEBUG, "onConnected");
         processLocation();
         setLocation();
+
     }
 
     @Override
