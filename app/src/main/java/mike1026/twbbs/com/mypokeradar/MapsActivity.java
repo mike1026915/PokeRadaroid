@@ -1,6 +1,8 @@
 package mike1026.twbbs.com.mypokeradar;
 
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
@@ -18,11 +20,13 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.VisibleRegion;
 
+import java.net.URL;
 import java.util.ArrayList;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
@@ -50,12 +54,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             {
                 m.remove();
             }
+
             for(PokeMon p: data)
             {
-                Marker tmp = mMap.addMarker(new MarkerOptions()
-                .position(new LatLng(p.latitude, p.longtitude))
-                .title("PokeMon ID" + p.id));
-                markerList.add(tmp);
+                try {
+                    Marker tmp = mMap.addMarker(new MarkerOptions()
+                            .position(new LatLng(p.latitude, p.longtitude))
+                            .title("PokeMon ID" + p.id).icon(BitmapDescriptorFactory.fromBitmap(p.bitmap)));
+                    markerList.add(tmp);
+                }catch(Exception e)
+                {
+                    e.printStackTrace();
+                }
             }
         }
     };
@@ -129,6 +139,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onStart() {
         super.onStart();
+        new QueryDataThread(MapsActivity.this, true).start();
     }
 
     /**
@@ -156,7 +167,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 MapsActivity.maxLatitude = mapVisibleRegion.latLngBounds.northeast.latitude;
                 MapsActivity.minLongtitude = mapVisibleRegion.latLngBounds.southwest.longitude;
                 MapsActivity.maxLongtitude = mapVisibleRegion.latLngBounds.northeast.longitude;
-                new QueryDataThread(MapsActivity.this).start();
+                new QueryDataThread(MapsActivity.this, false).start();
 
             }
         }
